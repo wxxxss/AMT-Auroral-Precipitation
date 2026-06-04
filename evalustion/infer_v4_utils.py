@@ -31,7 +31,7 @@ from data.dataset_v4 import (
     LAG_MINUTES,
     DERIVED_SCALAR_NAMES,
 )
-from model import AMT
+from method.model import AMT
 
 
 # ===================================================================
