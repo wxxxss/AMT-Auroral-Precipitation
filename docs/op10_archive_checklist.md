@@ -17,42 +17,75 @@ print("ovation module   :", Path(ovation.__file__).resolve())
 PY
 ```
 
-Archive the package directory reported by this command rather than assuming a development-repository path.
+Archive the package directory reported by this command rather than assuming a development-repository path. For the revised analysis, the runtime package was checked against the tracked development copy and had no local source modifications.
 
-## 2. Generate the exact coefficient manifest
+## 2. Generate and verify the exact coefficient manifest
+
+Run the public manifest utility against the coefficient directory used by the runtime installation:
 
 ```bash
 python tools/generate_op10_manifest.py \
-  /home/docker/data/private/AuroraData/premodel \
+  /path/to/the/runtime/premodel \
   --output op10_premodel_manifest.json
 ```
 
-For the working bundle used in the revision, the expected structural inventory is 45 files: one `all_premodel_python.p` file plus 11 coefficient/probability files for each of fall, spring, summer, and winter. The SHA-256 manifest, not names or timestamps alone, is the integrity reference.
+For the working bundle used in the revision, the verified inventory is:
 
-## 3. Prepare the archival payload
+- 45 files;
+- 98,860,814 uncompressed bytes;
+- `all_premodel_python.p`: 35,390,962 bytes;
+- `all_premodel_python.p` SHA-256: `0a4e913e6bb375a0a49babbc2d322f114f7d045174aebd401a8cc3ec0e01cc7a`.
 
-The final archival payload should contain:
+The complete verified manifest is committed as `third_party/auroramaps_op10/op10_premodel_manifest.json`. SHA-256 values, rather than filenames or timestamps alone, are the integrity reference.
+
+## 3. Exact Zenodo v2 artifacts
+
+The two exact runtime archives already prepared for the revised release are:
 
 ```text
-op10_exact_snapshot/
-  auroramaps/                    exact standalone source directory used at runtime
-  premodel/                      exact working coefficient directory
-  op10_premodel_manifest.json
-  LICENSE                        LGPLv3 license text
-  PROVENANCE.txt                 manuscript/release provenance note
+auroramaps_op10_source_used.tar.gz
+auroramaps_op10_premodel_used.tar.gz
+op10_premodel_manifest.json
 ```
 
-Create an archive without modifying the source or coefficient files:
+Their verified archive checksums are:
+
+```text
+fc62174f367864457e83622915476ddb5c4a26382b6eca5a9ca27cd9a00f9667  auroramaps_op10_source_used.tar.gz
+a68f40945b52b0e77f1e18db37aea598d5ee226f30b7ce66a1e27cf35b1e57fa  auroramaps_op10_premodel_used.tar.gz
+```
+
+Keep the exact source archive immutable. It intentionally preserves the historical working-machine path used by the runtime source.
+
+## 4. Portable reproduction copy
+
+For reproduction, extract both immutable archives into the same working directory and patch only that extracted copy:
 
 ```bash
-tar -czf op10_exact_snapshot.tar.gz op10_exact_snapshot/
-sha256sum op10_exact_snapshot.tar.gz > op10_exact_snapshot.tar.gz.sha256
+mkdir -p op10_work
+tar -xzf auroramaps_op10_source_used.tar.gz -C op10_work
+tar -xzf auroramaps_op10_premodel_used.tar.gz -C op10_work
+python tools/prepare_op10_snapshot.py op10_work
 ```
 
-## 4. GitHub versus archival release
+The resulting portable layout is:
 
-Do not commit the 95-MB coefficient directory to GitHub. GitHub should contain the AMT-owned workflow, provenance/license material, and the generated manifest. The exact standalone source and coefficient bundle should be deposited with the immutable archival release (e.g., Zenodo) and referenced by the manuscript Open Research statement.
+```text
+op10_work/
+  auroramaps/
+  premodel/
+```
 
-## 5. Final verification
+## 5. GitHub versus archival release
 
-After extracting the archive into a clean directory, regenerate the manifest and compare it with the archived manifest before considering the OP10 reproducibility package complete.
+Do not commit the 95-MB coefficient directory to GitHub. GitHub contains the AMT-owned workflow, provenance/license material, archive metadata, and the verified manifest. Zenodo v2 should contain the exact standalone source archive and coefficient archive above, the same manifest, archive metadata/checksums, and the finalized public AMT source release/tag.
+
+## 6. Final verification
+
+Before publishing the immutable Zenodo version:
+
+1. verify the two archive SHA-256 values above;
+2. extract the coefficient archive into a clean directory;
+3. regenerate its per-file manifest;
+4. compare the regenerated manifest with `third_party/auroramaps_op10/op10_premodel_manifest.json`;
+5. verify the GitHub release/tag corresponds to the reviewed public manuscript code.
