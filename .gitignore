@@ -23,6 +23,10 @@ env/
 ckpt/
 checkpoints/
 
+# Exact OP10 coefficient bundle is archived with the release artifacts (Zenodo),
+# not committed to GitHub. Keep a local extracted copy here when reproducing.
+third_party/auroramaps_op10/premodel/
+
 # Generated evaluation output
 res/
 results/
