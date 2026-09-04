@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
 """Public preprocessing helpers for the manuscript V4 OMNI/SSJ pipeline.
 
-This module exposes the parts of the private development pipeline that define
-manuscript data provenance:
+This module implements the OMNI-side preprocessing described in the revised
+manuscript:
 
-- seven primitive OMNI variables on a 5-min grid;
+- seven primitive OMNI variables on a regular 5-min grid;
 - manuscript quality-control bounds;
-- linear interpolation over gaps of at most 30 min (six 5-min steps);
+- linear interpolation only for complete gaps of at most 30 min;
 - 5-min history lags;
 - backward-only OMNI-to-SSJ matching with a 10-min tolerance;
 - chronological 2009--2012 / 2013 train-validation splitting with
-  within-class downsampling.
-
-DMSP/SSJ target extraction/classification is kept separate. The merge commands
-below expect the folded SSJ parquet described in the manuscript, including
-``utc``, ``mlat``, ``mlt``, ``aurora_type``, energy-flux targets, and
-``src_hemi`` when hemispheric folding is used.
+  within-class downsampling while preserving the natural class proportions.
 """
 
 from __future__ import annotations
@@ -37,12 +32,36 @@ DEFAULT_VAL_YEAR = 2013
 DEFAULT_RANDOM_STATE = 42
 
 
+def _interpolate_short_internal_gaps(series: pd.Series, max_steps: int) -> pd.Series:
+    """Linearly fill an entire internal NaN run only when its length <= max_steps."""
+    max_steps = int(max_steps)
+    if max_steps < 0:
+        raise ValueError("max_steps must be nonnegative")
+    if max_steps == 0 or not series.isna().any():
+        return series.copy()
+
+    missing = series.isna()
+    candidate = series.interpolate(method="linear", limit_area="inside")
+    result = series.copy()
+    run_ids = missing.ne(missing.shift(fill_value=False)).cumsum()
+    for _, run_mask in missing.groupby(run_ids):
+        if not bool(run_mask.iloc[0]):
+            continue
+        idx = run_mask.index
+        # groupby above preserves the original index subset through the grouped
+        # Series; select only members of this run before applying its length rule.
+        idx = run_mask[run_mask].index
+        if len(idx) <= max_steps:
+            result.loc[idx] = candidate.loc[idx]
+    return result
+
+
 def regularize_omni_5min(
     df: pd.DataFrame,
     *,
     interpolation_limit_steps: int = DEFAULT_INTERPOLATION_LIMIT_STEPS,
 ) -> pd.DataFrame:
-    """Apply manuscript QC, align to 5 min, and interpolate short gaps."""
+    """Apply manuscript QC, align to 5 min, and interpolate only short gaps."""
     required = {"utc", *OMNI_VARS}
     missing = sorted(required.difference(df.columns))
     if missing:
@@ -59,7 +78,10 @@ def regularize_omni_5min(
     out.loc[(out["P_dyn"] < 0.0) | (out["P_dyn"] > 90.0), "P_dyn"] = np.nan
 
     out = out.set_index("utc").asfreq(f"{CADENCE_MINUTES}min")
-    out = out.interpolate(method="linear", limit=int(interpolation_limit_steps))
+    for col in OMNI_VARS:
+        out[col] = _interpolate_short_internal_gaps(
+            out[col], int(interpolation_limit_steps)
+        )
     return out.reset_index()
 
 
@@ -174,7 +196,7 @@ def read_omni_5min_cdf(path: str | Path) -> pd.DataFrame:
     """Read the seven manuscript primitive variables from one OMNI 5-min CDF."""
     try:
         import cdflib
-    except ImportError as exc:  # pragma: no cover - exercised only with raw CDF input
+    except ImportError as exc:  # pragma: no cover
         raise ImportError("cdflib is required to read raw OMNI CDF files") from exc
 
     cdf = cdflib.CDF(str(path))
@@ -201,6 +223,7 @@ def build_omni_history_from_cdf_tree(
 ) -> pd.DataFrame:
     """Build one regularized/history-augmented OMNI table from yearly CDF folders."""
     root = Path(cdf_root)
+    years = list(years)
     parts: list[pd.DataFrame] = []
     for year in years:
         year_dir = root / str(year)
@@ -209,7 +232,7 @@ def build_omni_history_from_cdf_tree(
         for path in sorted(year_dir.glob("*.cdf")):
             parts.append(read_omni_5min_cdf(path))
     if not parts:
-        raise FileNotFoundError(f"No OMNI CDF files found under {root} for {list(years)}")
+        raise FileNotFoundError(f"No OMNI CDF files found under {root} for {years}")
 
     raw = pd.concat(parts, ignore_index=True)
     regular = regularize_omni_5min(raw)
