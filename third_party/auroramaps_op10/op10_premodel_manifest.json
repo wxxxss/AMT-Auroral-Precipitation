@@ -1,0 +1,233 @@
+{
+  "algorithm": "sha256",
+  "source_directory": "/home/docker/data/private/AuroraData/premodel",
+  "file_count": 45,
+  "total_bytes": 98860814,
+  "files": [
+    {
+      "path": "all_premodel_python.p",
+      "size": 35390962,
+      "sha256": "0a4e913e6bb375a0a49babbc2d322f114f7d045174aebd401a8cc3ec0e01cc7a"
+    },
+    {
+      "path": "fall_diff.txt",
+      "size": 860213,
+      "sha256": "c5efef27b49dc62b4a80fbb505f3d558e2c3e1916d0d55acfbd8bd5225f13d2b"
+    },
+    {
+      "path": "fall_diff_n.txt",
+      "size": 860213,
+      "sha256": "33822ed6334c45bfd6f20e87942e80cb0ce1f19d9f314a2bd0363ca6840b7c72"
+    },
+    {
+      "path": "fall_ions.txt",
+      "size": 860213,
+      "sha256": "27f8c6b065084c93152ea965adcf9df262791cdfd7b58e6102308b5a8a0b28e6"
+    },
+    {
+      "path": "fall_ions_n.txt",
+      "size": 860213,
+      "sha256": "e281700d66bb7efb471617eed20fafab130d9b983f1f8895a2f56c1aef20c0de"
+    },
+    {
+      "path": "fall_mono.txt",
+      "size": 860213,
+      "sha256": "7b1726387d24a8b4f84573329f1f08f5dc55e812f8b8d11e03c5cd98bd57b33e"
+    },
+    {
+      "path": "fall_mono_n.txt",
+      "size": 860213,
+      "sha256": "e8a34dcd731f61c8d7bfc91627755f09a8474a9f2c04267826ecdf754ab28f8d"
+    },
+    {
+      "path": "fall_prob_b_diff.txt",
+      "size": 2995253,
+      "sha256": "0b9ff2d6222d37fde5b22a48c973f4f2a1d1e18360a4cc0bc685bad5dc2112bc"
+    },
+    {
+      "path": "fall_prob_b_mono.txt",
+      "size": 2995253,
+      "sha256": "2ab12a63b3734750a4bd7f4ac3ef95bf5e01720ec84f01147f6a7f6e72bce63c"
+    },
+    {
+      "path": "fall_prob_b_wave.txt",
+      "size": 2995253,
+      "sha256": "5f13a68960e336e7ab7a7b3007db79cc4a643327273a86a4c3a48cdea4065308"
+    },
+    {
+      "path": "fall_wave.txt",
+      "size": 860213,
+      "sha256": "f3f7daf3594838588fa193f2aba564411fc31845afe9f71d98f3cf444146db13"
+    },
+    {
+      "path": "fall_wave_n.txt",
+      "size": 860213,
+      "sha256": "4b241c8e6dd69bd3bd4ac62284eb4cacd48c837052529a40ec80ba4cf9291df4"
+    },
+    {
+      "path": "spring_diff.txt",
+      "size": 860213,
+      "sha256": "1606bbc9939199b5aaaac4d3468f3402f0213224021645ab24d5500295d9ebf8"
+    },
+    {
+      "path": "spring_diff_n.txt",
+      "size": 860213,
+      "sha256": "f6d670fc8782c0e734f52517a4f31adc8a62f6d4052f1b04a2c4ba83eeb6178c"
+    },
+    {
+      "path": "spring_ions.txt",
+      "size": 860213,
+      "sha256": "f9199b0963f800842d3e290aef9c87501fa18d7827a5011b13673ad9a8f26601"
+    },
+    {
+      "path": "spring_ions_n.txt",
+      "size": 860213,
+      "sha256": "9bc572c1e599fb0ab5685b9951f8e5bcbb79e1a008025a7571b5ecea9b616181"
+    },
+    {
+      "path": "spring_mono.txt",
+      "size": 860213,
+      "sha256": "45bd06e303465c2906a73014729a4b787710aa5235a27237266969323eab9f17"
+    },
+    {
+      "path": "spring_mono_n.txt",
+      "size": 860213,
+      "sha256": "26c4e124adfe9cb1e8cbe306dad07f8de94e651714494b8e9935d25854331e2e"
+    },
+    {
+      "path": "spring_prob_b_diff.txt",
+      "size": 2995253,
+      "sha256": "29f394d52a68be6bfe2e269660fc12e7e1c1e277374cd75c31ed661d6efa1657"
+    },
+    {
+      "path": "spring_prob_b_mono.txt",
+      "size": 2995253,
+      "sha256": "41c6c58528d34aeedb40a097076ab253f3bd03bea663d284f359f4fc75337636"
+    },
+    {
+      "path": "spring_prob_b_wave.txt",
+      "size": 2995253,
+      "sha256": "5a77407dfe0765451430359f0aeb72834819c0cb3c97eaf4afb11f21de857842"
+    },
+    {
+      "path": "spring_wave.txt",
+      "size": 860213,
+      "sha256": "d9096ae20109b55f041c16739b09c1877b0efc6dec6830ad8035d873b35b5034"
+    },
+    {
+      "path": "spring_wave_n.txt",
+      "size": 860213,
+      "sha256": "63871f93b71f5ab0e0db6172d4000cf3a677d899b3e13159ff1c27583ee2844c"
+    },
+    {
+      "path": "summer_diff.txt",
+      "size": 860213,
+      "sha256": "b4d00f5c03f608f11b49d0df3bdba024a91f1fd5c4378f8e269971c31a69b239"
+    },
+    {
+      "path": "summer_diff_n.txt",
+      "size": 860213,
+      "sha256": "7084fe1ec3db0827fa8e5eeec8aac96880976b22ade7aed9eb3ac0dda65eb21b"
+    },
+    {
+      "path": "summer_ions.txt",
+      "size": 860213,
+      "sha256": "1bc50776bc23ec6dedc868d8a2653b0a59a21faaf6fccf12bb8636dc6dc1f3bd"
+    },
+    {
+      "path": "summer_ions_n.txt",
+      "size": 860213,
+      "sha256": "578e15b510cc3c2331b9837d6d6d1aab008982286ffbb54e71466ec8a48d9f6b"
+    },
+    {
+      "path": "summer_mono.txt",
+      "size": 860213,
+      "sha256": "016e76b20986c95299bea353aeabfca6c6dc2edcfe529e52e40c3deb8fa92edc"
+    },
+    {
+      "path": "summer_mono_n.txt",
+      "size": 860213,
+      "sha256": "7ea76bf8fb792dd731c988176e217b2c7f7ca2cd42e2067b81c0ec14af678673"
+    },
+    {
+      "path": "summer_prob_b_diff.txt",
+      "size": 2995253,
+      "sha256": "bbaae86df5d43fb363238ec982ca8b50ed4d4090f8ba729dc2abd2f38afeeb35"
+    },
+    {
+      "path": "summer_prob_b_mono.txt",
+      "size": 2995253,
+      "sha256": "2275a5c87181795edd025af7ea9e5152552999a57adfd41db2b4ae0d27260457"
+    },
+    {
+      "path": "summer_prob_b_wave.txt",
+      "size": 2995253,
+      "sha256": "58e0914312fe8cffb7169bdc741bfae56b6163336fb3706e4b4d277515509d5f"
+    },
+    {
+      "path": "summer_wave.txt",
+      "size": 860213,
+      "sha256": "9fa2615bc987419190ef01e7b522a36a544a971ad3eb0b230d7eba87d1b21d8b"
+    },
+    {
+      "path": "summer_wave_n.txt",
+      "size": 860213,
+      "sha256": "093dff765191d532a86bf64b029da4f3f514f075e0bb35f5e0b7124b0062644d"
+    },
+    {
+      "path": "winter_diff.txt",
+      "size": 860213,
+      "sha256": "5a015d64527a7ed3741c96cd548707ae775d5dd67495ba8e9b64bd29e93cbb8d"
+    },
+    {
+      "path": "winter_diff_n.txt",
+      "size": 860213,
+      "sha256": "c424022097763f5088c1dced3891fa9aa1f54fed0c824dfee7dd60d5d3f6e531"
+    },
+    {
+      "path": "winter_ions.txt",
+      "size": 860213,
+      "sha256": "69e7cb4eccc3e66a62dd57f26abb7870726b107986e048ba324744a6ddd5d6d9"
+    },
+    {
+      "path": "winter_ions_n.txt",
+      "size": 860213,
+      "sha256": "c163df87085c834efd64099fa71797e98a5fd9fcd2fe2920341bbc4b85f086be"
+    },
+    {
+      "path": "winter_mono.txt",
+      "size": 860213,
+      "sha256": "301d659f60cdb4c123d782d56e9a30f368487300dda771e4e68c20fee6ceba36"
+    },
+    {
+      "path": "winter_mono_n.txt",
+      "size": 860213,
+      "sha256": "ed20619a216c4055d5ef7355d8c74f69962c2dd1ee09660075f2db4aaae4b9ff"
+    },
+    {
+      "path": "winter_prob_b_diff.txt",
+      "size": 2995253,
+      "sha256": "bae08170b8fd7c3389dcb0321b10930437aec77b912e8d42464de93e4b571e77"
+    },
+    {
+      "path": "winter_prob_b_mono.txt",
+      "size": 2995253,
+      "sha256": "9733f5c7faf18cadfb5d85c5dd425609b272c00a8b58dd181cfc74ef4c4e6ef9"
+    },
+    {
+      "path": "winter_prob_b_wave.txt",
+      "size": 2995253,
+      "sha256": "c69c6e1f1268018eb2ba8a09035d56f87003c14346e13fe6b67b84a90cb20fbf"
+    },
+    {
+      "path": "winter_wave.txt",
+      "size": 860213,
+      "sha256": "9142c53c3d909818ab5eaaf19e02eba211b5342ace961ca0068567d70fa95950"
+    },
+    {
+      "path": "winter_wave_n.txt",
+      "size": 860213,
+      "sha256": "caa6f7b03c951337d7e4b0aed0b9785744753105e8786f039f9c540a9043cfe9"
+    }
+  ]
+}
