@@ -39,6 +39,7 @@ evaluation/
   ovation_driver.py                 four-hour weighted Newell driver
   ovation_model.py                  archived OP10 loading/interpolation helpers
   evaluate_pixelwise_ovation.py     sampled 2014 DMSP/SSJ AMT--OVATION comparison
+  evaluate_global_skill.py          Table 4 aggregate skill metrics
   boundary_statistics_utils.py      IMAGE boundary utilities
   evaluate_boundary_statistics.py   978-time IMAGE boundary evaluation
   evaluate_hp_timing.py             17 March 2015 hemispheric-power timing workflow
@@ -273,9 +274,21 @@ python evaluation/evaluate_pixelwise_ovation.py \
   --device cuda
 ```
 
-The evaluator reports Pearson correlation, log-space RMSE and prediction efficiency referenced to the observation mean.
+The evaluator reports Pearson correlation, log-space RMSE and prediction efficiency referenced to the observation mean. Its `all_paired.parquet` output is also the source for the manuscript aggregate skill summary.
 
-## 7. IMAGE boundary evaluation
+## 7. Global skill summary
+
+Table 4 uses the same sampled 2014 **All** evaluation set as Section 4.2.1. The aggregate metrics retain paired rows for which both model predictions exceed `1e-4 erg cm^-2 s^-1`. Pearson `R`, KGE and NMedAE are computed in log10 total-flux space; ROC AUC, CSI and accuracy use the physical activity threshold `E_tot >= 0.5 erg cm^-2 s^-1`.
+
+```bash
+python evaluation/evaluate_global_skill.py \
+  --paired-data outputs/pixelwise_ovation/all_paired.parquet \
+  --output-dir outputs/global_skill
+```
+
+This command writes the filtered paired sample and the six AMT/OVATION-Prime metrics used for the aggregate comparison.
+
+## 8. IMAGE boundary evaluation
 
 ```bash
 python evaluation/evaluate_boundary_statistics.py \
@@ -291,7 +304,7 @@ python evaluation/evaluate_boundary_statistics.py \
 
 The manuscript protocol requires paired EALB/PALB coverage in at least 18 of 24 MLT sectors, exact IMAGE timestamps, backward-only OMNI matching within 10 min, complete 120-min AMT and four-hour OVATION histories, and one-hour chronological thinning. The resulting evaluation sample contains 978 times: 371 Quiet, 473 Moderate and 134 Strong. Boundary thresholds of 0.25, 0.50 and 1.00 `erg cm^-2 s^-1` are evaluated.
 
-## 8. Hemispheric-power model-response timing
+## 9. Hemispheric-power model-response timing
 
 The event-scale comparison uses 17 March 2015, 04:00--18:00 UT, at 5-min cadence. AMT and OVATION-Prime are evaluated on the same polar grid and integrated with the same spherical area elements.
 
@@ -307,7 +320,9 @@ python evaluation/evaluate_hp_timing.py \
 
 This diagnostic is a comparison of model-response timing under the two input formulations. It is not presented as an independent observational validation of hemispheric-power accuracy.
 
-## 9. MLT--MLAT spatial diagnostic
+## 10. MLT--MLAT spatial diagnostic
+
+The spatial diagnostic deliberately reuses the exact same unique-UTC **All** sampling function and seed as the Section 4.2.1 pixel-wise evaluator, so it follows the manuscript requirement that the aggregate and spatial analyses use the same sampled evaluation set.
 
 ```bash
 python evaluation/evaluate_spatial_mlt_mlat.py \
@@ -335,7 +350,7 @@ python evaluation/plot_spatial_diagnostic_polar.py \
 
 The manuscript analysis contains 1,352 valid spatial bins; AMT has lower local median absolute log-flux error in 89.0% of them, with median `MedAE_OV - MedAE_AMT = 0.466 dex`.
 
-## 10. Solar-wind history sensitivity
+## 11. Solar-wind history sensitivity
 
 The controlled experiment uses 60, 90, 120, 180 and 240 min histories. All five models use the same row population valid for the full 240-min history. The corresponding driver dimensions are 68, 92, 116, 164 and 212.
 
@@ -368,7 +383,7 @@ The common manuscript subset contains 12,814,552 training samples, 1,525,176 val
 python -m pytest -q
 ```
 
-CI runs the focused regression suite on every branch update. The tests cover AMT architecture/loss, manuscript training defaults, SSJ classification/folding, OMNI QC/interpolation/backward matching, history-dependent feature dimensions, four-hour OVATION weighting, IMAGE matching/boundary statistics, MLT--MLAT spatial diagnostics, HP integration, and OP10 archive/manifest utilities.
+CI runs the focused regression suite on every branch update. The tests cover AMT architecture/loss, manuscript training defaults, SSJ classification/folding, OMNI QC/interpolation/backward matching, shared evaluation sampling, history-dependent feature dimensions, four-hour OVATION weighting, IMAGE matching/boundary statistics, aggregate global skill, MLT--MLAT spatial diagnostics, HP integration, and OP10 archive/manifest utilities.
 
 ## Reproducibility policy
 
