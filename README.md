@@ -60,7 +60,10 @@ sensitivity/
   evaluate_history_sensitivity.py
 
 third_party/
-  auroramaps_op10/                 standalone OP10/auroramaps snapshot used in revision
+  auroramaps_op10/                 OP10 provenance, license, and archive metadata
+
+tools/
+  generate_op10_manifest.py        SHA-256 manifest generator for the exact coefficient bundle
 
 tests/                             focused scientific/implementation regression tests
 ```
@@ -131,7 +134,14 @@ The manuscript comparison uses the standard four-hour weighted Newell coupling d
 
 For folded Southern-Hemisphere SSJ samples, the real UTC is retained for the four-hour solar-wind history and only the OP10 seasonal phase is shifted by 182 days.
 
-The standalone third-party source used for the revised comparison is staged under `third_party/auroramaps_op10/`. See `THIRD_PARTY_NOTICES.md` for provenance and licensing details.
+For exact reproducibility, the runtime source and coefficient bundle used for the revised comparison were archived separately from GitHub:
+
+- `auroramaps_op10_source_used.tar.gz`, SHA-256 `fc62174f367864457e83622915476ddb5c4a26382b6eca5a9ca27cd9a00f9667`;
+- `auroramaps_op10_premodel_used.tar.gz`, SHA-256 `a68f40945b52b0e77f1e18db37aea598d5ee226f30b7ce66a1e27cf35b1e57fa`.
+
+The exact `premodel` bundle contains 45 files totaling 98,860,814 uncompressed bytes. Its `all_premodel_python.p` file is 35,390,962 bytes with SHA-256 `0a4e913e6bb375a0a49babbc2d322f114f7d045174aebd401a8cc3ec0e01cc7a`.
+
+GitHub stores the provenance, LGPLv3 license, machine-readable archive metadata, coefficient-manifest tooling, and AMT-owned comparison code. The exact third-party source and coefficient archives are intended for the Zenodo v2 record. See `third_party/auroramaps_op10/README.md`, `third_party/auroramaps_op10/archive_metadata.json`, and `THIRD_PARTY_NOTICES.md`.
 
 ## IMAGE boundary statistics
 
@@ -252,7 +262,7 @@ The common manuscript subset contains 12,814,552 training samples, 1,525,176 val
 python -m pytest -q
 ```
 
-The focused tests cover the AMT architecture/loss, history-dependent input dimensions, exact backward IMAGE--OMNI matching, duplicate IMAGE timestamps, common-bin boundary scoring, four-hour OVATION driver construction, and MLT--MLAT spatial metrics.
+The focused tests cover the AMT architecture/loss, history-dependent input dimensions, exact backward IMAGE--OMNI matching, duplicate IMAGE timestamps, common-bin boundary scoring, four-hour OVATION driver construction, MLT--MLAT spatial metrics, and OP10 manifest generation.
 
 ## Reproducibility and provenance
 
