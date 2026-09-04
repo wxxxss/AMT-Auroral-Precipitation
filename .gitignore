@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local data and model artifacts
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pth
+*.pt
+*.ckpt
+ckpt/
+checkpoints/
+
+# Generated evaluation output
+res/
+results/
+outputs/
+logs/
+*.log
+
+# Local/private configuration
+.env
+.env.*
+config_local.py
+local_config.py
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
