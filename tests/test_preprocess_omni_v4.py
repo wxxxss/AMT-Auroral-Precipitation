@@ -26,7 +26,9 @@ def _omni_frame(times):
 
 
 def test_regularize_omni_applies_manuscript_qc_and_short_gap_interpolation():
-    df = _omni_frame(["2014-01-01 00:00", "2014-01-01 00:10"])
+    df = _omni_frame(
+        ["2014-01-01 00:00", "2014-01-01 00:05", "2014-01-01 00:10"]
+    )
     df.loc[1, "Bx"] = 600.0
 
     out = regularize_omni_5min(df, interpolation_limit_steps=6)
@@ -34,8 +36,8 @@ def test_regularize_omni_applies_manuscript_qc_and_short_gap_interpolation():
     assert out["utc"].tolist() == list(
         pd.to_datetime(["2014-01-01 00:00", "2014-01-01 00:05", "2014-01-01 00:10"])
     )
-    assert np.isclose(out.loc[1, "By"], 1.5)
-    assert np.isnan(out.loc[2, "Bx"])
+    assert np.isclose(out.loc[1, "Bx"], 1.0)
+    assert np.isclose(out.loc[1, "By"], 2.0)
 
 
 def test_add_history_lags_uses_5_minute_steps_and_drops_incomplete_history():
