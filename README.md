@@ -284,6 +284,7 @@ python evaluation/evaluate_boundary_statistics.py \
   --omni-parquet /path/to/omni_with_120min_history.parquet \
   --model-path outputs/amt_training/aurora_v4_best.pth \
   --scaler-path outputs/amt_training/sw_scaler_v4.pkl \
+  --snapshot-root op10_work \
   --thin-minutes 60 \
   --device cuda
 ```
@@ -314,6 +315,7 @@ python evaluation/evaluate_spatial_mlt_mlat.py \
   --ovation-omni /path/to/omni_for_ovation.parquet \
   --model-path outputs/amt_training/aurora_v4_best.pth \
   --scaler-path outputs/amt_training/sw_scaler_v4.pkl \
+  --snapshot-root op10_work \
   --mlt-bin-hours 0.5 \
   --mlat-bin-deg 1.0 \
   --min-count 20 \
