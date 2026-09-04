@@ -11,7 +11,11 @@ import numpy as np
 import pandas as pd
 
 from evaluation.infer_v4_utils import load_amt_model, run_amt_4heads
-from evaluation.ovation_model import run_ovation_on_points
+from evaluation.ovation_model import (
+    load_ovation_module,
+    make_flux_estimators,
+    run_ovation_on_points,
+)
 from evaluation.spatial_diagnostic_utils import (
     compute_spatial_metrics,
     count_spatial_bins,
@@ -26,6 +30,11 @@ def build_parser():
     p.add_argument("--ovation-omni", required=True)
     p.add_argument("--model-path")
     p.add_argument("--scaler-path")
+    p.add_argument(
+        "--snapshot-root",
+        default=None,
+        help="Directory containing the extracted auroramaps/ source and premodel bundle",
+    )
     p.add_argument("--output-dir", default="outputs/spatial_diagnostic")
     p.add_argument("--device", default="cpu")
     p.add_argument("--sample-max-utcs", type=int, default=60000)
@@ -82,7 +91,9 @@ def infer_predictions(sampled, args):
         args.ovation_omni, columns=["utc", "Bx", "By", "Bz", "Vx", "Vy", "Vz"]
     )
     ovation_sw["utc"] = pd.to_datetime(ovation_sw["utc"])
-    eval_df = run_ovation_on_points(eval_df, ovation_sw)
+    ao = load_ovation_module(args.snapshot_root)
+    estimators = make_flux_estimators(ao)
+    eval_df = run_ovation_on_points(eval_df, ovation_sw, estimators=estimators)
     keep = [
         c
         for c in [
@@ -158,6 +169,7 @@ def main(argv=None):
             "mlat_bin_deg": float(args.mlat_bin_deg),
             "min_count": int(args.min_count),
             "paired_finite_prediction_points": int(finite.sum()),
+            "op10_snapshot_root": str(Path(args.snapshot_root).resolve()) if args.snapshot_root else None,
         }
     )
     pd.DataFrame([summary]).to_csv(outdir / "spatial_summary.csv", index=False)
