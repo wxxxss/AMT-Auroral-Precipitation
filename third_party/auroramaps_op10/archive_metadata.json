@@ -1,0 +1,30 @@
+{
+  "op10_working_package": {
+    "package_name": "auroramaps",
+    "version_string": "0.3",
+    "upstream_project": "https://github.com/helioforecast/auroramaps",
+    "upstream_commit_sha": null,
+    "upstream_commit_note": "The working package was supplied as a standalone directory without .git metadata, so an exact upstream commit cannot be reconstructed reliably."
+  },
+  "source_archive": {
+    "filename": "auroramaps_op10_source_used.tar.gz",
+    "sha256": "fc62174f367864457e83622915476ddb5c4a26382b6eca5a9ca27cd9a00f9667"
+  },
+  "premodel_bundle": {
+    "directory_name": "premodel",
+    "file_count": 45,
+    "uncompressed_bytes": 98860814,
+    "archive_filename": "auroramaps_op10_premodel_used.tar.gz",
+    "archive_sha256": "a68f40945b52b0e77f1e18db37aea598d5ee226f30b7ce66a1e27cf35b1e57fa",
+    "all_premodel_python_p": {
+      "size_bytes": 35390962,
+      "sha256": "0a4e913e6bb375a0a49babbc2d322f114f7d045174aebd401a8cc3ec0e01cc7a"
+    },
+    "manifest_filename": "op10_premodel_manifest.json",
+    "manifest_algorithm": "sha256"
+  },
+  "archive_policy": {
+    "github": "AMT-owned source, evaluation code, third-party attribution/license, archive metadata, and the coefficient manifest.",
+    "zenodo_v2": "Exact standalone auroramaps source archive, exact 45-file premodel archive, coefficient manifest, and this metadata record."
+  }
+}
