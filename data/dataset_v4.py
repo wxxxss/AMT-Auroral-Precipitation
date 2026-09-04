@@ -1,7 +1,10 @@
 """Feature construction and PyTorch dataset for the final AMT model.
 
-The implementation mirrors the 116-dimensional solar-wind driver and the
-nine spatial/temporal skip features described in the revised manuscript.
+The production manuscript model uses a 120-min solar-wind history, yielding a
+116-dimensional driver vector plus nine spatial/temporal skip features. The
+same implementation also supports the controlled 60/90/120/180/240-min
+history-sensitivity experiment by changing only the exposed lag horizon.
+
 Raw data are not bundled with this repository; callers provide a dataframe
 containing the time-matched OMNI and DMSP/SSJ records.
 """
@@ -19,7 +22,6 @@ from torch.utils.data import Dataset
 
 
 OMNI_BASE_VARS = ["Bx", "By", "Bz", "Vx", "Vy", "Vz", "P_dyn"]
-LAG_MINUTES = list(range(5, 121, 5))
 DERIVED_SCALAR_NAMES = ["Newell_log", "Ey_conv", "sin_clock", "Bz_south_log"]
 CURRENT_DERIVED_NAMES = [
     "Newell_log",
@@ -44,6 +46,24 @@ SKIP_FEATURE_NAMES = [
     "cos_hour",
 ]
 TARGET_FLOOR = 1e-6
+CADENCE_MINUTES = 5
+PRODUCTION_HISTORY_MINUTES = 120
+SUPPORTED_HISTORY_MINUTES = (60, 90, 120, 180, 240)
+
+
+def lag_minutes_for_history(history_minutes: int) -> list[int]:
+    history_minutes = int(history_minutes)
+    if history_minutes not in SUPPORTED_HISTORY_MINUTES:
+        raise ValueError(
+            f"history_minutes must be one of {SUPPORTED_HISTORY_MINUTES}; "
+            f"got {history_minutes}"
+        )
+    return list(range(CADENCE_MINUTES, history_minutes + 1, CADENCE_MINUTES))
+
+
+def sw_dim_for_history(history_minutes: int) -> int:
+    """Return solar-wind input dimension for the controlled history horizon."""
+    return 20 + 4 * len(lag_minutes_for_history(history_minutes))
 
 
 def compute_derived_block(Bx, By, Bz, Vx, Vy, Vz, P_dyn=None, eps=1e-6):
@@ -58,7 +78,6 @@ def compute_derived_block(Bx, By, Bz, Vx, Vy, Vz, P_dyn=None, eps=1e-6):
     Bt = np.sqrt(By * By + Bz * Bz) + eps
     Bmag = np.sqrt(Bx * Bx + By * By + Bz * Bz)
     Vmag = np.sqrt(Vx * Vx + Vy * Vy + Vz * Vz) + eps
-
     sin_clock = By / Bt
     cos_clock = Bz / Bt
     half_angle = np.sqrt(np.clip((Bt - Bz) / (2.0 * Bt), 0.0, 1.0))
@@ -71,7 +90,7 @@ def compute_derived_block(Bx, By, Bz, Vx, Vy, Vz, P_dyn=None, eps=1e-6):
     newell_log = np.log1p(newell_raw)
     ey_conv = -Vx * Bz
     bz_south_log = np.log1p(np.maximum(-Bz, 0.0))
-    akasofu_raw = Vmag * Bmag * Bmag * (half_angle ** 4)
+    akasofu_raw = Vmag * Bmag * Bmag * (half_angle**4)
     akasofu_log = np.log1p(akasofu_raw)
 
     out = {
@@ -132,16 +151,16 @@ def compute_cos_sza(mlat_deg, mlt, utc_series):
     ).astype(np.float32)
 
 
-def build_sw_feature_names(history_minutes=120):
-    """Return the AMT solar-wind feature names for the requested history."""
-    if history_minutes % 5 != 0 or not 5 <= history_minutes <= 120:
-        raise ValueError("history_minutes must be a multiple of 5 between 5 and 120")
-    lag_minutes = list(range(5, history_minutes + 1, 5))
+def build_sw_feature_names(history_minutes=PRODUCTION_HISTORY_MINUTES):
+    """Return AMT solar-wind feature names for a supported history horizon."""
+    lag_minutes = lag_minutes_for_history(history_minutes)
     cols = list(OMNI_BASE_VARS)
     cols.extend(CURRENT_DERIVED_NAMES)
     for name in DERIVED_SCALAR_NAMES:
         cols.extend(f"{name}_lag_{m}" for m in lag_minutes)
-    cols.extend(["Newell_log_avg_1h", "Ey_conv_avg_1h", "Bz_south_log_avg_1h", "dPdyn_dt"])
+    cols.extend(
+        ["Newell_log_avg_1h", "Ey_conv_avg_1h", "Bz_south_log_avg_1h", "dPdyn_dt"]
+    )
     return cols
 
 
@@ -152,29 +171,44 @@ class AuroraMultiTaskDataset_V4(Dataset):
     ----------
     df:
         Dataframe containing ``utc``, ``mlat``, ``mlt``, current OMNI values,
-        raw 5-min OMNI lag columns through 120 min, and the DMSP/SSJ target
-        columns ``aurora_type``, ``ele_energy_flux``, and ``ion_energy_flux``.
+        raw 5-min OMNI lag columns through the selected history horizon, and the
+        DMSP/SSJ target columns ``aurora_type``, ``ele_energy_flux``, and
+        ``ion_energy_flux``.
     is_train:
         If True, fit a StandardScaler when ``scaler_path`` does not exist.
     scaler_path:
         Serialized StandardScaler path. In validation/inference mode this file
         must already exist.
+    history_minutes:
+        One of 60, 90, 120, 180, or 240. Production AMT uses 120 min.
     """
 
-    def __init__(self, df, is_train=True, scaler_path=None):
+    def __init__(
+        self,
+        df,
+        is_train=True,
+        scaler_path=None,
+        history_minutes=PRODUCTION_HISTORY_MINUTES,
+    ):
+        self.history_minutes = int(history_minutes)
+        self.lag_minutes = lag_minutes_for_history(self.history_minutes)
         self.df = df.copy()
         self._prepare_targets()
         self._prepare_spatial_features()
         self._prepare_derived_features()
 
-        self.sw_cols = build_sw_feature_names(120)
+        self.sw_cols = build_sw_feature_names(self.history_minutes)
         self.skip_cols = list(SKIP_FEATURE_NAMES)
         missing_sw = [c for c in self.sw_cols if c not in self.df.columns]
         missing_skip = [c for c in self.skip_cols if c not in self.df.columns]
         if missing_sw or missing_skip:
             raise ValueError(f"Missing features: sw={missing_sw}, skip={missing_skip}")
-        if len(self.sw_cols) != 116:
-            raise RuntimeError(f"Expected 116 solar-wind features, got {len(self.sw_cols)}")
+        expected_dim = sw_dim_for_history(self.history_minutes)
+        if len(self.sw_cols) != expected_dim:
+            raise RuntimeError(
+                f"Expected {expected_dim} solar-wind features for "
+                f"{self.history_minutes} min, got {len(self.sw_cols)}"
+            )
 
         self._fit_or_load_scaler(is_train=is_train, scaler_path=scaler_path)
         self.target_cols = [
@@ -188,7 +222,9 @@ class AuroraMultiTaskDataset_V4(Dataset):
         self.Y_tensor = torch.tensor(self.df[self.target_cols].to_numpy(), dtype=torch.float32)
 
         aurora_type = self.df["aurora_type"].fillna(0).astype(int).to_numpy()
-        ion_active = (self.df["ion_energy_flux"].fillna(0.0).to_numpy() > 1e-5).astype(np.float32)
+        ion_active = (
+            self.df["ion_energy_flux"].fillna(0.0).to_numpy() > 1e-5
+        ).astype(np.float32)
         self.aurora_type_tensor = torch.tensor(aurora_type, dtype=torch.long)
         self.ion_active_tensor = torch.tensor(ion_active, dtype=torch.float32)
 
@@ -226,12 +262,16 @@ class AuroraMultiTaskDataset_V4(Dataset):
         if missing_current:
             raise ValueError(f"Missing current OMNI/time columns: {sorted(missing_current)}")
 
-        curr = compute_derived_block(*(df[c].to_numpy(dtype=np.float32) for c in OMNI_BASE_VARS[:6]))
+        curr = compute_derived_block(
+            *(df[c].to_numpy(dtype=np.float32) for c in OMNI_BASE_VARS[:6])
+        )
         for key, value in curr.items():
             df[key] = value
 
-        for minute in LAG_MINUTES:
-            needed = [f"{v}_lag_{minute}" for v in ("Bx", "By", "Bz", "Vx", "Vy", "Vz")]
+        for minute in self.lag_minutes:
+            needed = [
+                f"{v}_lag_{minute}" for v in ("Bx", "By", "Bz", "Vx", "Vy", "Vz")
+            ]
             missing = [c for c in needed if c not in df.columns]
             if missing:
                 raise ValueError(f"Missing raw OMNI lag columns for {minute} min: {missing}")
@@ -239,6 +279,8 @@ class AuroraMultiTaskDataset_V4(Dataset):
             for name in DERIVED_SCALAR_NAMES:
                 df[f"{name}_lag_{minute}"] = lag[name]
 
+        # All supported histories are at least 60 min, so these aggregate features
+        # are defined identically for every controlled sensitivity run.
         for name in ["Newell_log", "Ey_conv", "Bz_south_log"]:
             one_hour = [name] + [f"{name}_lag_{m}" for m in range(5, 56, 5)]
             df[f"{name}_avg_1h"] = df[one_hour].mean(axis=1).astype(np.float32)
