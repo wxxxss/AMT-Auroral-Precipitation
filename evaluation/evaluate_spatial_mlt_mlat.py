@@ -10,6 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from evaluation.evaluate_pixelwise_ovation import sample_group_by_unique_utc
 from evaluation.infer_v4_utils import load_amt_model, run_amt_4heads
 from evaluation.ovation_model import (
     load_ovation_module,
@@ -51,12 +52,13 @@ def build_parser():
 
 
 def sample_by_utc(df, max_utcs, seed=42):
-    unique = pd.Index(pd.to_datetime(df["utc"]).dropna().unique())
-    if len(unique) <= int(max_utcs):
-        return df.copy()
-    rng = np.random.RandomState(int(seed))
-    sampled = rng.choice(unique.to_numpy(), int(max_utcs), replace=False)
-    return df[df["utc"].isin(sampled)].copy()
+    """Reuse the exact Section 4.2.1 All-sample UTC selection protocol."""
+    return sample_group_by_unique_utc(
+        df,
+        "All",
+        max_unique_times=int(max_utcs),
+        seed=int(seed),
+    )
 
 
 def load_sample(path, max_utcs, seed):
@@ -165,6 +167,7 @@ def main(argv=None):
         {
             "sample_max_utcs": int(args.sample_max_utcs),
             "seed": int(args.seed),
+            "sampling_protocol": "identical to Section 4.2.1 All unique-UTC sample",
             "mlt_bin_hours": float(args.mlt_bin_hours),
             "mlat_bin_deg": float(args.mlat_bin_deg),
             "min_count": int(args.min_count),
