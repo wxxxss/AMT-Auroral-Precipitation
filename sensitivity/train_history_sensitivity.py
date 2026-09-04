@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Train one controlled solar-wind history-length sensitivity model.
 
-All history lengths must use the same train/validation row population that is
-valid for the full 240-min history. The only controlled change is the number of
-5-min lagged driver features exposed to the AMT dataset. The manuscript
-sensitivity runs used 100 epochs and retained the minimum-validation-loss
-checkpoint for each history length.
+All 60/90/120/180/240-min configurations use the same sample population that
+is valid for the complete 240-min history. Apart from the number of retained
+5-min lag steps, the public sensitivity runs use the same hidden-layer setup,
+loss, optimization defaults, random seed, early-stopping rule, and
+minimum-2013-validation-loss checkpoint criterion as the production AMT run.
 """
 
 from __future__ import annotations
@@ -43,6 +43,11 @@ def build_parser():
     p.add_argument("--weight-decay", type=float, default=1e-2)
     p.add_argument("--num-workers", type=int, default=0)
     p.add_argument("--max-grad-norm", type=float, default=5.0)
+    p.add_argument("--scheduler-patience", type=int, default=8)
+    p.add_argument("--scheduler-factor", type=float, default=0.5)
+    p.add_argument("--min-learning-rate", type=float, default=1e-6)
+    p.add_argument("--early-stop-patience", type=int, default=50)
+    p.add_argument("--checkpoint-interval", type=int, default=5)
     return p
 
 
@@ -68,17 +73,55 @@ def evaluate_validation(model, loader, criterion, device):
             running_loss += float(loss) * bs
             running_mae += (pred - target).abs().mean(dim=0) * bs
             n_samples += bs
+    if n_samples == 0:
+        raise RuntimeError("empty validation DataLoader")
     return running_loss / n_samples, (running_mae / n_samples).cpu().tolist()
+
+
+def _checkpoint_payload(
+    *,
+    epoch,
+    model,
+    optimizer,
+    scheduler,
+    val_loss,
+    train_loss,
+    val_mae,
+    history_minutes,
+    sw_dim,
+    seed,
+    best_val_loss,
+):
+    return {
+        "epoch": int(epoch),
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict(),
+        "val_loss": float(val_loss),
+        "train_loss": float(train_loss),
+        "val_per_head_mae": list(val_mae),
+        "history_minutes": int(history_minutes),
+        "sw_dim": int(sw_dim),
+        "skip_dim": 9,
+        "seed": int(seed),
+        "best_val_loss": float(best_val_loss),
+    }
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
     set_seed(args.seed)
+    torch.set_default_dtype(torch.float32)
+    if args.checkpoint_interval <= 0:
+        raise ValueError("--checkpoint-interval must be positive")
+
     history = int(args.history_minutes)
     expected_dim = sw_dim_for_history(history)
 
     run_dir = Path(args.output_root) / f"hist{history}m_seed{args.seed}"
     run_dir.mkdir(parents=True, exist_ok=True)
+    snapshots_dir = run_dir / "snapshots"
+    snapshots_dir.mkdir(parents=True, exist_ok=True)
     scaler_path = run_dir / "sw_scaler_v4.pkl"
     best_path = run_dir / "aurora_v4_best.pth"
 
@@ -119,17 +162,24 @@ def main(argv=None):
     )
 
     device = torch.device(args.device)
-    model = AMT(sw_dim=actual_dim, skip_dim=9).to(device)
-    criterion = MultiTaskAsymmetricLoss((5.0, 50.0, 50.0, 10.0)).to(device)
+    model = AMT(sw_dim=actual_dim, skip_dim=9, dropout=0.2).to(device)
+    criterion = MultiTaskAsymmetricLoss(
+        (5.0, 50.0, 50.0, 10.0), active_threshold=-5.0
+    ).to(device)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay
     )
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=8, min_lr=1e-6
+        optimizer,
+        mode="min",
+        factor=args.scheduler_factor,
+        patience=args.scheduler_patience,
+        min_lr=args.min_learning_rate,
     )
 
     n_params = sum(p.numel() for p in model.parameters())
     best_val_loss = float("inf")
+    epochs_without_improvement = 0
     history_rows = []
     head_names = ["diff", "mono", "bb", "ion"]
 
@@ -151,38 +201,63 @@ def main(argv=None):
             bs = x_sw.size(0)
             running_train += float(loss.detach()) * bs
             n_train += bs
+        if n_train == 0:
+            raise RuntimeError("empty training DataLoader")
 
         train_loss = running_train / n_train
         val_loss, val_mae = evaluate_validation(model, val_loader, criterion, device)
         scheduler.step(val_loss)
         lr = optimizer.param_groups[0]["lr"]
+
+        improved = val_loss < best_val_loss
+        if improved:
+            best_val_loss = val_loss
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
         row = {
             "epoch": epoch,
             "train_loss": train_loss,
             "val_loss": val_loss,
             "lr": lr,
+            "epochs_without_improvement": epochs_without_improvement,
             **{f"val_mae_{name}": value for name, value in zip(head_names, val_mae)},
         }
         history_rows.append(row)
         pd.DataFrame(history_rows).to_csv(run_dir / "training_history.csv", index=False)
-        print(f"epoch={epoch:03d} train={train_loss:.6f} val={val_loss:.6f} lr={lr:.2e}")
+        print(
+            f"epoch={epoch:03d} train={train_loss:.6f} val={val_loss:.6f} "
+            f"lr={lr:.2e} best={best_val_loss:.6f}"
+        )
 
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "model_state_dict": model.state_dict(),
-                    "val_loss": val_loss,
-                    "train_loss": train_loss,
-                    "val_per_head_mae": val_mae,
-                    "history_minutes": history,
-                    "sw_dim": actual_dim,
-                    "skip_dim": 9,
-                    "seed": args.seed,
-                },
-                best_path,
+        payload = _checkpoint_payload(
+            epoch=epoch,
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            val_loss=val_loss,
+            train_loss=train_loss,
+            val_mae=val_mae,
+            history_minutes=history,
+            sw_dim=actual_dim,
+            seed=args.seed,
+            best_val_loss=best_val_loss,
+        )
+        if improved:
+            torch.save(payload, best_path)
+        if epoch % args.checkpoint_interval == 0:
+            torch.save(payload, snapshots_dir / f"epoch_{epoch:03d}.pth")
+
+        if (
+            args.early_stop_patience > 0
+            and epochs_without_improvement >= args.early_stop_patience
+        ):
+            print(
+                f"early stopping after epoch {epoch}: no validation improvement "
+                f"for {args.early_stop_patience} epochs"
             )
+            break
 
     summary = {
         "history_minutes": history,
@@ -191,10 +266,16 @@ def main(argv=None):
         "seed": args.seed,
         "n_params": n_params,
         "best_val_loss": best_val_loss,
-        "epochs": args.epochs,
+        "epochs_requested": args.epochs,
+        "epochs_completed": len(history_rows),
         "batch_size": args.batch_size,
         "learning_rate": args.learning_rate,
         "weight_decay": args.weight_decay,
+        "scheduler_patience": args.scheduler_patience,
+        "scheduler_factor": args.scheduler_factor,
+        "min_learning_rate": args.min_learning_rate,
+        "early_stop_patience": args.early_stop_patience,
+        "checkpoint_interval": args.checkpoint_interval,
         "train_rows_common": len(train_df),
         "val_rows_common": len(val_df),
         "best_checkpoint": str(best_path),
