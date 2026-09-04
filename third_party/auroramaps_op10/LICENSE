@@ -30,14 +30,13 @@ with which the Combined Work was made is also called the "Linked
 Version".
 
   The "Minimal Corresponding Source" for a Combined Work means the
-Corresponding Source for a Combined Work, excluding the
-Corresponding Source for portions of the Combined Work that,
-considered in isolation, are based on the Application, and not on
-the Linked Version.
+Corresponding Source for the Combined Work, excluding any source code
+for portions of the Combined Work that, considered in isolation, are
+based on the Application, and not on the Linked Version.
 
   The "Corresponding Application Code" for a Combined Work means the
 object code and/or source code for the Application, including any data
-and utility programs needed to reproduce the Combined Work from the
+and utility programs needed for reproducing the Combined Work from the
 Application, but excluding the System Libraries of the Combined Work.
 
   1. Exception to Section 3 of the GNU GPL.
@@ -115,8 +114,8 @@ the following:
        Version.
 
    e) Provide Installation Information, but only if you would otherwise
-   be required to provide such information under section 6 of the GNU
-   GPL, and only to the extent that such information is necessary to
+   be required to provide such information under section 6 of the GNU GPL,
+   and only to the extent that such information is necessary to
    install and execute a modified version of the Combined Work produced
    by recombining or relinking the Application with a modified version
    of the Linked Version. (If you use option 4d0, the Installation
@@ -154,8 +153,9 @@ of the GNU Lesser General Public License "or any later version"
 applies to it, you have the option of following the terms and
 conditions either of that published version or of any later version
 published by the Free Software Foundation. If the Library as you
-received it does not specify a version number, you may choose any
-version of the GNU Lesser General Public License ever published.
+received it does not specify a version number of the GNU Lesser General
+Public License, you may choose any version of the GNU Lesser General
+Public License ever published.
 
   If the Library as you received it specifies that a proxy can decide
 whether future versions of the GNU Lesser General Public License shall
