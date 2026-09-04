@@ -86,6 +86,24 @@ def run_amt_4heads(
     return work
 
 
+def _grid_frame(sw_row, mlat, mlt):
+    mlat = np.asarray(mlat, dtype=float)
+    mlt = np.asarray(mlt, dtype=float)
+    mlt_grid, mlat_grid = np.meshgrid(mlt, mlat)
+    n = mlt_grid.size
+    base = sw_row.to_dict() if hasattr(sw_row, "to_dict") else dict(sw_row)
+    for key in ("mlat", "mlt", "aurora_type", "ele_energy_flux", "ion_energy_flux", "_dt"):
+        base.pop(key, None)
+    frame = pd.DataFrame({key: np.repeat(value, n) for key, value in base.items()})
+    frame["mlat"] = mlat_grid.ravel().astype(np.float32)
+    frame["mlt"] = (mlt_grid.ravel() % 24.0).astype(np.float32)
+    frame["utc"] = pd.to_datetime(frame["utc"])
+    frame["aurora_type"] = np.zeros(n, dtype=np.int8)
+    frame["ele_energy_flux"] = np.zeros(n, dtype=np.float32)
+    frame["ion_energy_flux"] = np.zeros(n, dtype=np.float32)
+    return frame, mlat_grid.shape
+
+
 def predict_grid(
     model,
     scaler_path,
@@ -96,20 +114,44 @@ def predict_grid(
     batch_size=65536,
 ):
     """Predict four AMT channels on an MLAT x MLT grid for one driver time."""
-    mlat = np.asarray(mlat, dtype=float)
-    mlt = np.asarray(mlt, dtype=float)
-    mlt_grid, mlat_grid = np.meshgrid(mlt, mlat)
-    base = sw_row.to_dict() if hasattr(sw_row, "to_dict") else dict(sw_row)
-    n = mlt_grid.size
-    frame = pd.DataFrame({key: np.repeat(value, n) for key, value in base.items()})
-    frame["mlat"] = mlat_grid.ravel()
-    frame["mlt"] = mlt_grid.ravel()
-    pred = run_amt_4heads(
-        frame,
-        model,
-        scaler_path=scaler_path,
-        device=device,
-        batch_size=batch_size,
-    )
-    channels = [pred[f"pred_mlp_{suffix}"].to_numpy().reshape(mlat_grid.shape) for suffix in ("d", "m", "b", "i")]
-    return np.stack(channels, axis=0)
+    frame, shape = _grid_frame(sw_row, mlat, mlt)
+    dataset = build_inference_dataset(frame, scaler_path)
+    pred = predict_batched(model, dataset, device=device, batch_size=batch_size)
+    return pred.T.reshape(4, *shape)
+
+
+def predict_grid_multi(
+    model,
+    scaler_path,
+    sw_rows,
+    mlat,
+    mlt,
+    device="cpu",
+    batch_size=131072,
+):
+    """Predict ``K`` driver times on one shared MLAT x MLT grid.
+
+    Returns an array with shape ``(K, 4, n_mlat, n_mlt)``.
+    """
+    if isinstance(sw_rows, pd.DataFrame):
+        rows = [sw_rows.iloc[i] for i in range(len(sw_rows))]
+    else:
+        rows = list(sw_rows)
+    if not rows:
+        raise ValueError("sw_rows must not be empty")
+
+    frames = []
+    shape = None
+    for row in rows:
+        frame, this_shape = _grid_frame(row, mlat, mlt)
+        if shape is None:
+            shape = this_shape
+        elif shape != this_shape:
+            raise RuntimeError("Grid shape changed while building multi-time inference frame")
+        frames.append(frame)
+
+    all_rows = pd.concat(frames, ignore_index=True)
+    dataset = build_inference_dataset(all_rows, scaler_path)
+    pred = predict_batched(model, dataset, device=device, batch_size=batch_size)
+    n_points = int(np.prod(shape))
+    return pred.reshape(len(rows), n_points, 4).transpose(0, 2, 1).reshape(len(rows), 4, *shape)
