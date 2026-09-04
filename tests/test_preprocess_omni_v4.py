@@ -40,6 +40,23 @@ def test_regularize_omni_applies_manuscript_qc_and_short_gap_interpolation():
     assert np.isclose(out.loc[1, "By"], 2.0)
 
 
+def test_regularize_omni_does_not_partially_fill_gaps_longer_than_30_minutes():
+    # Seven missing 5-min records separate these two observations (35 min of
+    # missing data). The manuscript permits interpolation only for complete
+    # gaps of up to 30 min, so none of the seven missing Bx values may be filled.
+    df = _omni_frame(["2014-01-01 00:00", "2014-01-01 00:40"])
+
+    out = regularize_omni_5min(df, interpolation_limit_steps=6)
+
+    interior = out.loc[
+        (out["utc"] > pd.Timestamp("2014-01-01 00:00"))
+        & (out["utc"] < pd.Timestamp("2014-01-01 00:40")),
+        "Bx",
+    ]
+    assert len(interior) == 7
+    assert interior.isna().all()
+
+
 def test_add_history_lags_uses_5_minute_steps_and_drops_incomplete_history():
     df = _omni_frame(pd.date_range("2014-01-01", periods=4, freq="5min"))
 
