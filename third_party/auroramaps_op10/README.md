@@ -12,33 +12,33 @@ The working package was supplied to the AMT authors as a standalone directory ra
 - license: GNU Lesser General Public License v3.0;
 - upstream project: https://github.com/helioforecast/auroramaps.
 
-The supplied directory contained no `.git` metadata, so an exact upstream Git commit SHA cannot be reconstructed reliably and is therefore not claimed in the manuscript or this release.
+The supplied directory contained no `.git` metadata. An exact upstream Git commit SHA therefore cannot be reconstructed reliably and is not claimed.
 
-The manuscript runs imported `auroramaps` from the authors' private AMT development checkout. The exact source directory used at runtime has been archived as:
+The manuscript environment imported the runtime source from the authors' AMT development checkout. The tracked `auroramaps/` directory had no local Git modifications when the release snapshot was verified. The exact runtime source was archived as:
 
 ```text
 auroramaps_op10_source_used.tar.gz
 ```
 
-with SHA-256:
+SHA-256:
 
 ```text
 fc62174f367864457e83622915476ddb5c4a26382b6eca5a9ca27cd9a00f9667
 ```
 
-The source archive is intended for the Zenodo v2 release. GitHub retains the provenance record, license, and AMT-owned wrapper/evaluation code.
+This exact standalone source archive will be distributed publicly with the Zenodo v2 release. GitHub retains the AMT-owned evaluation code, provenance record, license, archive metadata, and coefficient manifest.
 
-## Exact coefficient bundle used in the revised analysis
+## Exact coefficient bundle
 
-The working OP10 installation uses a `premodel` directory containing **45 files** with a total uncompressed size of **98,860,814 bytes**. The directory contains `all_premodel_python.p` plus the seasonal diffuse, monoenergetic, wave, ion, number-flux, and probability-coefficient files for fall, spring, summer, and winter.
+The OP10 installation used a `premodel` directory containing **45 files** and **98,860,814 uncompressed bytes**. It contains `all_premodel_python.p` and the seasonal diffuse, monoenergetic, wave, ion, number-flux, and probability coefficient files.
 
-The coefficient bundle has been archived as:
+The exact bundle is archived as:
 
 ```text
 auroramaps_op10_premodel_used.tar.gz
 ```
 
-with SHA-256:
+SHA-256:
 
 ```text
 a68f40945b52b0e77f1e18db37aea598d5ee226f30b7ce66a1e27cf35b1e57fa
@@ -52,33 +52,44 @@ size:   35,390,962 bytes
 sha256: 0a4e913e6bb375a0a49babbc2d322f114f7d045174aebd401a8cc3ec0e01cc7a
 ```
 
-The coefficient files are third-party model data and are intentionally not committed to the GitHub repository. Instead, the final Zenodo archival release will contain the **exact working `premodel` directory** together with a SHA-256 manifest. Generate that manifest directly from the working directory with:
+The complete byte-level manifest is already committed as `op10_premodel_manifest.json`. It records all 45 relative paths, exact byte sizes, and SHA-256 digests. A current upstream download must not be substituted for this verified working bundle when reproducing the manuscript baseline.
+
+Machine-readable release metadata are stored in `archive_metadata.json`.
+
+## Portable reproduction copy
+
+The immutable source archive preserves the exact historical runtime source, including the working-machine `premodel` path embedded in `auroramaps/ovation.py`. Do not modify that archive.
+
+For reproduction, extract a working copy of both Zenodo artifacts into one directory:
 
 ```bash
-python tools/generate_op10_manifest.py \
-  /path/to/premodel \
-  --output op10_premodel_manifest.json
+mkdir -p op10_work
+tar -xzf auroramaps_op10_source_used.tar.gz -C op10_work
+tar -xzf auroramaps_op10_premodel_used.tar.gz -C op10_work
+python tools/prepare_op10_snapshot.py op10_work
 ```
 
-The manifest records every relative path, exact byte size, and SHA-256 digest. This is the byte-level reproducibility reference; a visually similar file list or an unverified current upstream download must not be substituted for the working bundle.
-
-Machine-readable archive metadata are stored in `archive_metadata.json`.
-
-## Release layout
-
-The release split is:
-
-- **GitHub:** AMT-owned source code, evaluation workflow, provenance notes, LGPLv3 license text, archive metadata, and the generated OP10 manifest;
-- **Zenodo v2:** the exact standalone `auroramaps` source archive used by the authors, the exact 45-file `premodel` archive, the same manifest, and release metadata/checksums.
-
-After extracting the archived OP10 bundle for reproduction, place or link its coefficient directory at:
+The portable working layout is then:
 
 ```text
-third_party/auroramaps_op10/premodel/
+op10_work/
+  auroramaps/
+  premodel/
 ```
 
-The GitHub `.gitignore` explicitly excludes that directory so the large third-party bundle is not accidentally committed.
+Pass this directory to the public evaluation commands using:
+
+```text
+--snapshot-root op10_work
+```
+
+`tools/prepare_op10_snapshot.py` changes only the extracted reproduction copy so that `auroramaps/ovation.py` resolves `../premodel` relative to its package directory. It refuses to patch an unrecognized source revision.
+
+## Release split
+
+- **GitHub:** AMT-owned model, preprocessing/training/evaluation code, third-party attribution and LGPLv3 text, archive metadata, manifest, and portable-snapshot tooling.
+- **Zenodo v2:** the exact standalone `auroramaps` source archive, exact 45-file `premodel` archive, the same manifest, and the finalized GitHub release snapshot.
 
 ## Four-hour driver
 
-The AMT-owned comparison code uses `evaluation/ovation_driver.py` for the corrected four-hour weighted Newell coupling preprocessing. The standalone OP10 implementation and coefficient bundle remain separate third-party reproducibility artifacts.
+The revised AMT comparisons use `evaluation/ovation_driver.py` to construct the standard four-hour weighted Newell coupling driver. The solar wind is first aggregated to hourly means, then the current hour and the preceding three hours are combined with weights `a`, `0.65`, `0.65^2`, and `0.65^3`, where `a` is the fraction of the current hour elapsed.
