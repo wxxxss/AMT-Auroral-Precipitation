@@ -27,7 +27,11 @@ from evaluation.boundary_statistics_utils import (
     thin_by_time,
 )
 from evaluation.infer_v4_utils import load_amt_model, predict_grid_multi
-from evaluation.ovation_model import make_flux_estimators, predict_total_flux
+from evaluation.ovation_model import (
+    load_ovation_module,
+    make_flux_estimators,
+    predict_total_flux,
+)
 
 
 MLAT = np.linspace(50.0, 90.0, 80)
@@ -50,6 +54,11 @@ def build_parser():
     p.add_argument("--omni-parquet", required=True)
     p.add_argument("--model-path")
     p.add_argument("--scaler-path")
+    p.add_argument(
+        "--snapshot-root",
+        default=None,
+        help="Directory containing the extracted auroramaps/ source and premodel bundle",
+    )
     p.add_argument("--output-dir", default="outputs/boundary_statistics")
     p.add_argument("--device", default="cpu")
     p.add_argument("--min-image-pairs", type=int, default=18)
@@ -152,7 +161,8 @@ def main(argv=None):
     selected.to_csv(outdir / "boundary_selected_events.csv", index=False)
 
     model = load_amt_model(args.model_path, device=args.device)
-    estimators = make_flux_estimators()
+    ao = load_ovation_module(args.snapshot_root)
+    estimators = make_flux_estimators(ao)
     e_cols = [f"ealb_{i}" for i in range(24)]
     p_cols = [f"palb_{i}" for i in range(24)]
     rows = []
@@ -226,6 +236,7 @@ def main(argv=None):
             "Moderate": "all remaining eligible timestamps",
         },
         "metric_pairing": "AMT and OVATION scored on identical common valid MLT bins",
+        "op10_snapshot_root": str(Path(args.snapshot_root).resolve()) if args.snapshot_root else None,
     }
     (outdir / "boundary_statistics_metadata.json").write_text(
         json.dumps(metadata, indent=2), encoding="utf-8"
