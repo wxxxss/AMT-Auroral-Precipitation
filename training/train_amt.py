@@ -9,7 +9,8 @@ patience 50 on aggregate validation loss, and a full training snapshot every
 the selected model.
 
 Data paths are command-line arguments; no private filesystem locations are
-embedded in this public release.
+embedded in this public release. Training history records the aggregate
+asymmetric loss and the per-head weighted MSE diagnostics used in Figure 11.
 """
 
 from __future__ import annotations
@@ -56,12 +57,27 @@ def _set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def _per_head_weighted_mse(
+    criterion: MultiTaskAsymmetricLoss,
+    pred: torch.Tensor,
+    target: torch.Tensor,
+) -> torch.Tensor:
+    """Return the four channel-wise weighted MSE values used in Figure 11."""
+    pred_detached = pred.detach()
+    squared_error = (pred_detached - target) ** 2
+    active = (target > criterion.active_threshold).to(pred_detached.dtype)
+    under = (pred_detached < target).to(pred_detached.dtype)
+    penalties = criterion.penalties.to(device=pred_detached.device, dtype=pred_detached.dtype)
+    weights = 1.0 + active * under * penalties
+    return (weights * squared_error).mean(dim=0)
+
+
 def _epoch(model, loader, criterion, device, optimizer=None, max_grad_norm=5.0):
     training = optimizer is not None
     model.train(training)
     total_loss = 0.0
     total_samples = 0
-    per_head_abs = torch.zeros(4, device=device)
+    per_head_wmse = torch.zeros(4, device=device)
 
     context = torch.enable_grad() if training else torch.no_grad()
     with context:
@@ -78,12 +94,12 @@ def _epoch(model, loader, criterion, device, optimizer=None, max_grad_norm=5.0):
 
             batch_size = x_sw.shape[0]
             total_loss += float(loss.detach()) * batch_size
-            per_head_abs += (pred.detach() - target).abs().mean(dim=0) * batch_size
+            per_head_wmse += _per_head_weighted_mse(criterion, pred, target) * batch_size
             total_samples += batch_size
 
     if total_samples == 0:
         raise RuntimeError("empty DataLoader: no samples were evaluated")
-    return total_loss / total_samples, (per_head_abs / total_samples).detach().cpu().tolist()
+    return total_loss / total_samples, (per_head_wmse / total_samples).detach().cpu().tolist()
 
 
 def _snapshot_payload(
@@ -94,8 +110,8 @@ def _snapshot_payload(
     scheduler,
     train_loss: float,
     val_loss: float,
-    train_mae,
-    val_mae,
+    train_wmse,
+    val_wmse,
     best_val_loss: float,
     config: dict,
 ) -> dict:
@@ -107,8 +123,8 @@ def _snapshot_payload(
         "scheduler_state_dict": scheduler.state_dict(),
         "train_loss": float(train_loss),
         "val_loss": float(val_loss),
-        "train_per_head_mae": list(train_mae),
-        "val_per_head_mae": list(val_mae),
+        "train_per_head_wmse": list(train_wmse),
+        "val_per_head_wmse": list(val_wmse),
         "best_val_loss": float(best_val_loss),
         "config": dict(config),
     }
@@ -192,10 +208,10 @@ def main(argv=None) -> int:
     history = []
 
     for epoch in range(1, args.epochs + 1):
-        train_loss, train_mae = _epoch(
+        train_loss, train_wmse = _epoch(
             model, train_loader, criterion, device, optimizer, args.max_grad_norm
         )
-        val_loss, val_mae = _epoch(model, val_loader, criterion, device)
+        val_loss, val_wmse = _epoch(model, val_loader, criterion, device)
         scheduler.step(val_loss)
         lr = optimizer.param_groups[0]["lr"]
 
@@ -211,8 +227,8 @@ def main(argv=None) -> int:
             "train_loss": train_loss,
             "val_loss": val_loss,
             "learning_rate": lr,
-            "train_per_head_mae": train_mae,
-            "val_per_head_mae": val_mae,
+            "train_per_head_wmse": train_wmse,
+            "val_per_head_wmse": val_wmse,
             "epochs_without_improvement": epochs_without_improvement,
         }
         history.append(rec)
@@ -227,8 +243,8 @@ def main(argv=None) -> int:
             scheduler=scheduler,
             train_loss=train_loss,
             val_loss=val_loss,
-            train_mae=train_mae,
-            val_mae=val_mae,
+            train_wmse=train_wmse,
+            val_wmse=val_wmse,
             best_val_loss=best_val,
             config=config,
         )
